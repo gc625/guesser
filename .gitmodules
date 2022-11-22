@@ -1,0 +1,3 @@
+[submodule "ConvNeXt"]
+	path = ConvNeXt
+	url = https://github.com/gc625/ConvNeXt
