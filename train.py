@@ -1,3 +1,4 @@
+# %%
 import torch
 from torchvision import datasets, transforms, models
 import torchvision
@@ -17,9 +18,6 @@ writer = SummaryWriter()
 
 batch_size = 7
 num_epochs = 80
-with_bin = True
-
-
 
 
 
@@ -53,7 +51,7 @@ val_loader = DataLoader(
 test_loader = DataLoader(
     dataset=test_set,
     batch_size=batch_size,
-    shuffle=True,
+    shuffle=False,
     num_workers=8
 )
 
@@ -84,66 +82,52 @@ scheduler = torch.optim.lr_scheduler.StepLR(optimizer,step_size=4,gamma=0.5)
 
 scaler = torch.cuda.amp.GradScaler()
 
+
+
+ckpt = torch.load('ckpts/epoch11')
+
+
+model.load_state_dict(ckpt)
+
 model.to('cuda')
 
 
+# ret = []
 
-loss_epochs = []
-val_epochs = []
-for epoch in range(num_epochs):
-    train_bar = tqdm(train_loader)
-    total_loss = 0
+predictions = []
+labels = [] 
 
-
-    ## TRAINING ## 
-    for i,data in enumerate(train_bar):
-        batch_images,batch_labels = data
-        optimizer.zero_grad()
+# %%
+# loss = 
+## VALIDATION ##
+with torch.no_grad():
+    
+    for batch_images,batch_labels in tqdm(test_loader):
+        ## TODO: 
         with torch.cuda.amp.autocast():
             batch_images,batch_labels = batch_images.to('cuda'),batch_labels.to('cuda')
             output = model(batch_images)
 
-            # calc loss
-            loss = loss_function(output,batch_labels)
-            writer.add_scalar("Loss/train_iter", loss, (i*batch_size)+(epoch*len(train_bar)))
-        # propagate loss
-        scaler.scale(loss).backward()
-
-        # update the parameters
-        scaler.step(optimizer)
-        total_loss+= loss.item()
-        train_bar.set_postfix({'loss':f'{loss.item():.2f}','epoch':epoch})
-    
-
-        scaler.update()
-        writer.add_scalar("lr",scheduler.get_last_lr()[0],(epoch+1)*i)
-    
-    
-    scheduler.step()
-    ## logging training statistics
-    average_loss = total_loss/len(train_loader)
-    loss_epochs += [average_loss]
-    writer.add_scalar("Loss/train_epoch", average_loss, (epoch+1))
-    print(f'Epoch {epoch} average loss: {average_loss:.2f}')
-    
-    ## VALIDATION ##
-    with torch.no_grad():
-        total_loss = 0 
-        for batch_images,batch_labels in tqdm(val_loader):
-            ## TODO: 
-            with torch.cuda.amp.autocast():
-                batch_images,batch_labels = batch_images.to('cuda'),batch_labels.to('cuda')
-                output = model(batch_images)
-                loss = loss_function(output,batch_labels)
-            total_loss += loss
+            predictions.append(output)
+            labels.append(batch_labels)
+            # ret.append([output,batch_labels])
 
 
-        ## logging validation statistics
-        val_loss =  total_loss/len(val_loader.dataset)
-        val_epochs += [val_loss]
-        print(f'Epoch {epoch}, val acc; {val_loss:2f}')
-        writer.add_scalar("Loss/val_epoch", val_loss, (epoch+1))
+predictions = torch.concat(predictions)
+labels = torch.concat(labels)
 
-    torch.save(model.state_dict(), f'/home/gabriel/guesser/ckpts/epoch{epoch}')
 
-    
+#%%
+pdist = nn.PairwiseDistance(p=2)
+
+
+distances = pdist(labels,predictions)
+
+
+
+
+
+worst_dist, worst_idx = torch.topk(distances,10)
+best_dist,best_idx = torch.topk(distances,10,largest=False)
+
+torch.topk()
