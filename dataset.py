@@ -41,8 +41,6 @@ class USLocations(Dataset):
         self.get_average_pos()
         snames = list(self.states.keys())
         self.state2class = {snames[i]: i for i in range(len(snames))}
-        # print(state2class['az'])
-
 
 
 
@@ -75,14 +73,13 @@ class USLocations(Dataset):
 
         cur_state = name[:2]
 
-        image_class = torch.tensor(self.state2class[cur_state])
+        labels = torch.hstack((torch.tensor(self.state2class[cur_state]),abs_coordinates))
 
-        relative_coordinates = abs_coordinates - self.mean_pos[cur_state]
+        # relative_coordinates = abs_coordinates - self.mean_pos[cur_state]
 
         if self.withbin:
-            return image_tensor,image_class,relative_coordinates
-
-
+            # return image_tensor,torch.tensor(self.state2class[cur_state])
+            return image_tensor,labels
         else:
             return image_tensor,abs_coordinates
 
