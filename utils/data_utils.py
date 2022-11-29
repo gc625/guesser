@@ -64,29 +64,30 @@ def sign_url(input_url=None, secret=None):
 
 
 class State():
-    def __init__(
-            self,
-            file_path,
-            state_name):
+    '''
+    State class for every state in America, stores sampled indices, and coordinates    
+    
+    '''
+
+    def __init__(self,file_path,state_name):
+        
         self._file_path = file_path
         print(f'Creating State {state_name}')
+        
+        # set up @properties and aesthetic stuff
         with open(self._file_path) as f:
             lines =f.readlines()
-    
         self._len = len(lines)
         self._name = state_name
-    
-        self.sampled_idx_file = P(self.path).parents[1] / 'sampled_coordinates' / f'{self._name}.txt'
+        self.sampled_idx_file = P(self._file_path).parents[1] / 'sampled_coordinates' / f'{self._name}.txt'
+        
+        # Create a set to add all sampled coordinates
         self.sampled_indices = set()
         if self.sampled_idx_file.exists():
             with open(self.sampled_idx_file) as f:
                 for line in f:
                     self.sampled_indices.add(int(line.rstrip()))
         
-
-        self.new_sampled = set()
-
-
     def __str__(self) -> str:        
         return str(self._name)
 
@@ -100,18 +101,12 @@ class State():
     def __repr__(self):
         return f'State object for state {self._name}'
 
-
     def load_coordinates(self):
         
         self.coords = []
-
         with open(self._file_path) as f:
             self.coords += [line.strip() for line in f]
-        
         return self.coords
-
-        
-
 
     def update_sampled_indices(self,new_indices):
         self.sampled_indices = self.sampled_indices.update(new_indices)
@@ -128,7 +123,23 @@ class State():
 
 
 class Datatools():
-
+    '''
+    Set of tools to extract valid USA street coordinates from https://batch.openaddresses.io/data
+    
+    Data folder should either be in the root dir, or softlinked to the curent directory
+    
+    data
+    ├── coordinates_by_state # 51 text files with UNPROCESSED coordinates
+    ├── images # Where script extracts images
+    │   ├── raw
+    │   ├── test
+    │   ├── train
+    │   └── val
+    ├── labels # 51 .txt containing SAMPLED indices in train/val/test of sampled coordinates 
+    ├── raw_jsons 
+    │   └── us # CONTAINS 51 folders with all the downloaded data
+    └── sampled_coordinates # 51 .txt containing sampled coordinates
+    '''
 
     def __init__(self,data_root,raw_json_dirs,coords_dir) -> None:
         self.data_root = data_root
@@ -142,44 +153,56 @@ class Datatools():
         self.SECRET = None
         self.xmin,self.xmax = 3.688565,71.242223
         self.ymin,self.ymax = -171.208898, -48.664879
-        
         print('Loading State Data')
+
+        # Automatically extract from raw jsons if not exist
         if len(glob.glob(os.path.join(self.coords_dir,'*'))) == 0:
-            # raise FileNotFoundError('coordinates not extracted, run extract_coordinates()')
             self.extract_coordinates()
+
+        # load coordinates into a dict
         self.state_dict = {
             str(P(state).stem): State(os.path.join(self.coords_dir,P(state).stem)+'.txt',P(state).stem) for state in self.states
         }
         print('Done loading State Data')
+
+
+
+        # ! TODO: number of coordinates way to much anyways, so set max length to be the minimum number of coordinates for any state
         self.max_dataset_size = min([len(state) for _,state in self.state_dict.items()])*len(self.state_dict)
         
-        
+
+        # Some coordinates are formatted incorrectly, prepare set to track these
         self.bad_indices = set()
         if P(self.bad_indices_dir).exists():
             with open(self.bad_indices_dir) as f:
                 for line in f:
                     self.bad_indices.add(int(line.rstrip()))
         
+        # Some coordinates return error when querying street view api, also keep track of them
         self.coordinates_with_errors = []
         if P(self.coordinates_with_errors_dir).exists():
             with open(self.coordinates_with_errors_dir) as f:
                 for line in f:
                     self.coordinates_with_errors.append(str(line.rstrip()))
 
-    def extract_coordinates(self):
 
+    
+    def extract_coordinates(self):
+        '''
+        automatically run to extract just street coordinates from the openaddresses geojsons 
+        '''
         for state in tqdm(self.states):
-            # data/locations/us/state    
+            
             print(f'extracting state {state}')
             all_jsons = glob.glob(os.path.join(state,"*.geojson"))
             coordinates = []
             for json_file in all_jsons:
+                # ! parcels and buildings not relavant
                 if not any(x in json_file for x in ['parcels','buildings']):
                     with open(json_file) as f:
-                        
                         for line in tqdm(f):
                             data = json.loads(line)
-
+                            # ! Some dont have coordinates for whatever reason
                             if data['geometry'] is not None:
                                 longitdue,latitude = data['geometry']['coordinates']
                                 coordinates.append([latitude,longitdue])
@@ -195,8 +218,11 @@ class Datatools():
             f.close()
 
     def update_bad_indices(self,new_bad_indices):
+        '''
+        Depreciated. Was used to add bad indices while retriving data before, but that was kinda dumb.
+        I can just check all the coordinates first.
+        '''
         self.bad_indices = self.bad_indices.update(new_bad_indices)
-
         with open(self.bad_indices_dir,'a') as f:
             for idx in new_bad_indices:
                 f.write(f'{idx}\n')
@@ -204,19 +230,12 @@ class Datatools():
         f.close()
 
 
-
-    def random_exclusion(self, start, stop, excluded) -> int:
-        """Function for getting a random number with some numbers excluded"""
-        excluded = set(excluded)
-        value = random.randint(start, stop - len(excluded)) # Or you could use randrange
-        for exclusion in tuple(excluded):
-            if value < exclusion:
-                break
-            value += 1
-        return value    
-
     def delete_all(self):
-
+        '''
+        removed all processed data/sampled indices. Mainly used when debugging, but can also be used
+        to wipe everything for fresh processing.
+        '''
+        
         print("THIS WILL DELETE ALL LABEL FILES + SAMPLED INDICES")
         x = input('y/n?')
 
@@ -231,7 +250,9 @@ class Datatools():
                 print(f'removing {f}')
                 os.remove(f)
         else:
-            exit()
+            # lazy
+            return
+
 
     def remove_all_bad_indices(self):
         bad_indices = []
@@ -260,6 +281,11 @@ class Datatools():
         '''
         param: split_ratios: List[Int,Int,Int]
                number of train,val,test coords
+        
+
+        Given N target coordinates, sample N//51 from each state.
+        -> rounded down, and coordinates with downloading errors not compensated for,
+        -> so actual amount is going to be fewer
         '''
         if not isinstance(sum(split_ratios),int): raise TypeError('non integer in split ratios') 
 
@@ -268,8 +294,8 @@ class Datatools():
         N = len(self.state_dict)
         num_train = train// N
         num_val = val// N
-        num_test = test// N
-        num_total = num_train+num_val+num_test
+        num_test = test// N 
+        num_total = num_train+num_val+num_test # total number per state
         if num_total > self.max_dataset_size // N:
             raise AssertionError(f'split too large. Max dataset size is {self.max_dataset_size}, but {sum(split_ratios)} requested')
 
@@ -284,7 +310,7 @@ class Datatools():
         print(f'old splits: {train},{val},{test}')
         
 
-
+        #! EXCLUDE ALREADY SAMPLED INDICES AND BAD INDICES (download error)
         all_sampled_indices = [state.sampled_indices for _,state in self.state_dict.items()]
         all_sampled_indices = set(chain.from_iterable(all_sampled_indices))
         if all_sampled_indices is None:
@@ -292,42 +318,16 @@ class Datatools():
         else:
             to_exclude = all_sampled_indices.union(self.bad_indices)
 
-
-        # for i in tqdm(range(num_total)):
-        #     indices.append(self.random_exclusion(0,self.max_dataset_size//N-1,to_exclude))
-        #     # indices.append(random.choice(list(set([x for x in range(0, self.max_dataset_size-1)]) - all_sampled_indices)))
-        # indices = sorted(indices)
+        # all possible indices to sample from
         indices = np.array(list(range(0,self.max_dataset_size//N -1 )))
         to_exclude = np.array(list(to_exclude))
-        
+
+        # num_totals of valid randomly selected coordinates.
         indices = np.random.choice(indices[np.isin(indices,to_exclude,invert=True)],num_total,replace=False)
-
-
 
         train_indices = indices[:num_train]
         val_indices = indices[num_train:(num_train+num_val)]
         test_indices = indices[(num_train+num_val):]
-
-        # with open(os.path.join(self.label_dir,'train.txt'),'w') as f:
-        #     for v in train_indices:
-        #         f.write(f'{str(v).zfill(6)}\n')
-        # f.close()
-        # with open(os.path.join(self.label_dir,'val.txt'),'w') as f:
-        #     for v in val_indices:
-        #         f.write(f'{str(v).zfill(6)}\n')    
-        # f.close()
-        # with open(os.path.join(self.label_dir,'trainval.txt'),'w') as f:
-        #     for v in train_indices+val_indices:
-        #         f.write(f'{str(v).zfill(6)}\n')
-        # f.close()    
-        # with open(os.path.join(self.label_dir,'test.txt'),'w') as f:
-        #     for v in test_indices:
-        #         f.write(f'{str(v).zfill(6)}\n')    
-        # f.close()
-        # with open(os.path.join(self.label_dir,'all.txt'),'w') as f:
-        #     for v in train_indices+val_indices+test_indices:
-        #         f.write(f'{str(v).zfill(6)}\n')    
-        # f.close()
 
         splits = {
             'train': train_indices,
@@ -342,36 +342,9 @@ class Datatools():
             'test':0
         }
 
-        # bad_indices = []
-        
-
-        # for name,state in tqdm(self.state_dict.items()):
-        #     # state.update_sampled_indices(indices)
-        #     coords = np.array(state.load_coordinates())
-        #     for split,idx in splits.items():
-        #         selected_coords = coords[idx]
-        #         for i in range(len(selected_coords)):          
-        #             cur_coords = selected_coords[i].split(',')  
-        #             if idx[i] in bad_indices:
-        #                 print(f'{idx[i]} is bad, skipped')
-
-        #             elif  self.xmin < float(cur_coords[0]) < self.xmax \
-        #                 and self.ymin < float(cur_coords[1]) < self.ymax:
-        #                 continue
-        #             else:
-        #                 bad_indices += [idx[i]]
-        #                 print(f'index {idx[i]} for {name} is bad with coordinates: {selected_coords[i]}')
-        #     # state.update_sampled_indices(indices_sampled)
-        
-        # self.update_bad_indices(bad_indices)
-
-
-
         for name,state in tqdm(self.state_dict.items()):
-            # state.update_sampled_indices(indices)
+
             coords = np.array(state.load_coordinates())
-
-
             indices_sampled = []
             for split,idx in splits.items():
                 selected_coords = coords[idx]
@@ -396,12 +369,12 @@ class Datatools():
 
                         outname = os.path.join(self.label_dir,split+'_state_idx.txt')
                         with open(outname,'a') as f:
-                            f.write(f'{name},{idx[i]}\n')
+                            f.write(f'{name}{idx[i]}\n')
                         f.close()
 
                         outname = os.path.join(self.label_dir,'all_state_idx.txt')
                         with open(outname,'a') as f:
-                            f.write(f'{name},{idx[i]}\n')
+                            f.write(f'{name}{idx[i]}\n')
                         f.close()
                         indices_sampled += [idx[i]]
                         true_count[split] += 1
@@ -409,19 +382,16 @@ class Datatools():
                     else:
                         print(f'somehow coordinates are still bad: {cur_coords}')
             state.update_sampled_indices(indices_sampled)
-        
-        # 
-            # while 
 
-        
+        # print actual number sampled.
         print('TRUE SPLIT COUNTS:')
         for split,num in true_count.items():
             print(f'{split}:{num}')
         
     def concat_images(self,list_of_images,out_name):
-
-        # img_paths = sorted(glob.glob(os.path.join(directory,'*')))
-        # print(img_paths)
+        '''
+        For every coordinate, we download 5 images at different angles and stitch them together
+        '''
         images = []
 
         for img in list_of_images:
@@ -444,22 +414,18 @@ class Datatools():
         coordinate: [lat,long]
         split: str: 'train','val','test'
         stateidx: 'az003240'
+
+
+        this function download and concats images for a single coordinate
+
         '''
-        if self.API_KEY is None:
-            with open('/home/gabriel/guesser/api-key.txt') as f:
-                self.API_KEY = str(f.readline())
-        
-        if self.SECRET is None:
-            with open('/home/gabriel/guesser/secret.txt') as f:
-                self.SECRET = str(f.readline())
+        if self.API_KEY is None or self.SECRET is None:
+            raise ValueError('API_KEY OR SECRET IS MISSING')
 
         split_folder = os.path.join(self.data_root,'images',split)
         temp_folder = os.path.join(self.data_root,'images','raw')
         final_name = os.path.join(split_folder,stateidx+'.jpg')
-        
-
-
-
+    
         if P(final_name).exists():
             print(f'{final_name} already exists! Skipping')
             return False
@@ -498,14 +464,15 @@ class Datatools():
                 return False
             images += [response[0]]
 
-        
-
         self.concat_images(images,final_name)
         return True
 
     def download_all_images(self,start_idx=0,num_frames=None):
+        '''
+        For every split, we try downloading the partitioned training/val/test coordinates
+        if there is an error it skips the coordinate and appends it to bad_indices .txt
         
-
+        '''        
         self.start_idx = start_idx
         self.num_frames = num_frames
 
@@ -523,24 +490,20 @@ class Datatools():
             'test':'',    
         }
 
-
         for key in state_idx:
             idx_file = self.label_dir+f'/{key}_state_idx.txt'
             coord_file = self.label_dir+f'/{key}_coords.txt'
 
-            indices = [''.join(idx.split(',')) for idx in  open(idx_file).read().split('\n') if idx.strip() != '']
+            indices = [''.join(idx.split(',')) for idx in  open(idx_file).read().split('\n') if idx.strip() != ''] #maybe wrong
             state_idx[key] = indices
 
             coords = [c.split(',') for c in open(coord_file).read().split('\n') if c.strip() != '']
             coords = [[float(c[0]),float(c[1])] for c in coords]
             all_coordinates[key] = coords
-
-        # counter = len([name for name in os.listdir('/home/gabriel/guesser/data/images/raw/')])
         counter = 0
-
+        
         for split in state_idx:
-            # if counter >= 28000/5:
-            #     break
+
             names = state_idx[split]
             coordinates = all_coordinates[split]
             assert len(coordinates) == len(names), 'length mismatch'
@@ -556,8 +519,3 @@ class Datatools():
 
                 counter += self.fetch_and_stitch(coordinates[i],split,names[i]) * 5
                 pbar.set_description("Successful images %s" % counter)
-        
-
-        # for row in self.coordinates_with_errors:
-        #     with open(f'{self.data_root}/images/badcoordinates.txt','a') as f:
-        #         f.write(f'{row}\n')

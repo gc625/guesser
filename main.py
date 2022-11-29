@@ -50,7 +50,7 @@ def setup_custom_logger(name,write_dir):
 def get_args_parser():
     parser = argparse.ArgumentParser('ConvNeXt training and evaluation script for image classification', add_help=False)
     parser.add_argument('--batch_size', default=7, type=int,
-                        help='Per GPU batch size')
+                        help='Per GPU batch size, RTX3090 can run with 7 if torch.amp, else 4')
     parser.add_argument('--epochs', default=80, type=int)
     parser.add_argument('--opt', default='adamw', type=str, metavar='OPTIMIZER',
                         help='Optimizer (default: "adamw"')
@@ -61,7 +61,7 @@ def get_args_parser():
     parser.add_argument('--max_norm', type=float, default=15, metavar='norm',
                         help='max grad norm')
     
-    parser.add_argument('--ckpt', type=str, default='ckpts/debug_new/1669476920/epoch1_ckpt.pth', metavar='ckpt',
+    parser.add_argument('--ckpt', type=str, default='', metavar='ckpt',
                         help='ckpt path')
     
     parser.add_argument('--with_bin', type=str2bool, default=True,
@@ -80,6 +80,15 @@ def get_args_parser():
 
 
 def main(args):
+    '''
+    main training script with the following features supported
+
+    - Torch automatic mixed precision
+    - grad clipping
+    - tensorboard logging
+    - .txt logging 
+    - interval ckpt saving 
+    '''
     print(args)
 
 
@@ -118,22 +127,22 @@ def main(args):
     test_loader = dataloaders['test']
 
     model = setup_model(ckpt,with_bin,logger).to('cuda')
-
-    # if with_bin:
     loss_function = setup_loss_function(with_bin,mean_positions=train_loader.dataset.mean_pos)
-    if with_bin:
-        output_decoder = loss_function.output_decoder
-        # output_decoder = None
-    else:
-        output_decoder = None
+    
+    output_decoder = loss_function.output_decoder if with_bin else None
     
     if opt == 'adamw':
         optimizer = torch.optim.AdamW(model.parameters(),lr=lr)
-    
+    else: 
+        raise ValueError('no other optimizers supported at this time')
+
+    # TODO: this is not flexible, add it to args.
     if sched == 'linear':
         scheduler = torch.optim.lr_scheduler.LinearLR(optimizer,1,0.1,total_iters=20)
     elif sched == 'step':
         scheduler = torch.optim.lr_scheduler.StepLR(optimizer,step_size=4,gamma=0.5)
+    
+    
     pdist = nn.PairwiseDistance(p=2)
 
     scaler = torch.cuda.amp.GradScaler()
@@ -149,8 +158,6 @@ def main(args):
     logger.info(f'scheduler: {scheduler}')
 
     writer.add_scalar("LR/lr",scheduler.get_last_lr()[0],0)
-
-    
 
     for epoch in range(epochs):
         model.train()
@@ -191,8 +198,6 @@ def main(args):
         average_loss = epoch_loss/len(train_loader)
 
         writer.add_scalar("Loss/train_epoch", average_loss, epoch)
-        # logger.info()
-
         torch.save(model.state_dict(),os.path.join(cur_dir,f'epoch{epoch}_ckpt.pth'))
         logger.info(f"ckpt saves to {os.path.join(cur_dir,f'epoch{epoch}_ckpt.pth')}")
         if epoch % eval_freq == 0:
@@ -260,7 +265,6 @@ def backward_step(model,output,labels,loss_function,optimizer,mixed_precision,wi
         with torch.cuda.amp.autocast():
             if with_bin:
                 loss = loss_function(output,labels,writer,cur_iters)
-                # loss = loss_function(output,labels)
             else:
                 loss = loss_function(output,labels)
             scaler.scale(loss).backward()
@@ -271,7 +275,6 @@ def backward_step(model,output,labels,loss_function,optimizer,mixed_precision,wi
             scaler.update()
     else:
         if with_bin:
-            # loss = loss_function(output,labels)
             loss = loss_function(output,labels,writer,cur_iters)
         else:
             loss = loss_function(output,labels)

@@ -1,8 +1,6 @@
 import torch
 from torch.utils.data import Dataset
-from torchvision import datasets
 from torchvision.transforms import ToTensor
-import matplotlib.pyplot as plt
 import os
 from PIL import Image
 import glob
@@ -14,7 +12,11 @@ import ConvNeXt.models.convnext_isotropic
 
 
 class USLocations(Dataset):
+    '''
+    Torch dataset for loading in images + labels 
 
+    with support for bin based model and plain regression
+    '''
     def __init__(self,
     images_dir: str,
     labels_dir: str,
@@ -70,24 +72,15 @@ class USLocations(Dataset):
 
         coordinates = self.stateidx_to_coordinates[name]
         abs_coordinates = torch.tensor((coordinates))
-
         cur_state = name[:2]
-
         labels = torch.hstack((torch.tensor(self.state2class[cur_state]),abs_coordinates))
-
-        # relative_coordinates = abs_coordinates - self.mean_pos[cur_state]
-
         if self.withbin:
-            # return image_tensor,torch.tensor(self.state2class[cur_state])
             return image_tensor,labels
         else:
             return image_tensor,abs_coordinates
 
     def __len__(self):
-
         return len(self.image_paths)
-
-
 
     def get_average_pos(self):
         from collections import defaultdict
@@ -117,20 +110,3 @@ if __name__ == "__main__":
     train_dataset[2]
 
 
-
-
-    # model = create_model(
-    # 'convnext_large', 
-    # pretrained=True,
-    # in_22k=True, 
-    # num_classes=21841, 
-    # drop_path_rate=0,
-    # layer_scale_init_value=1e-6,
-    # head_init_scale=1,
-    # 
-    # from tqdm import tqdm
-    # for i in tqdm(range(len(train_dataset))):
-    #     if train_dataset[i] is not None:
-    #         errors += [train_dataset[i]]
-
-    print('')

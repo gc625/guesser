@@ -1,19 +1,3 @@
-import numpy as np
-import torch
-
-# from bit.models import ResNetV2
-from torchvision import transforms
-from PIL import Image
-import json
-
-
-
-
-# wordnet_ids = open("/home/gabriel/guesser/data/imagenet_labels/imagenet21k_wordnet_ids.txt", "r").readlines()
-# wordnet_ids = [x.strip() for x in wordnet_ids]
-# wordnet_ids = [int(x[1:]) for x in wordnet_ids]
-
-
 IN22k_labels = {"0": "organism, being",
   "1": "benthos",
   "2": "heterotroph",
