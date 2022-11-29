@@ -6,7 +6,7 @@ import ConvNeXt.models.convnext_isotropic
 import torch.nn as nn
 import torch
 from pathlib import Path
-from model_utils import BinBasedConVNeXt, CLSREG_loss
+from utils.model_utils import BinBasedConVNeXt, CLSREG_loss
 
 
 

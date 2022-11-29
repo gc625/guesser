@@ -1,5 +1,5 @@
 from utils.data_utils import Datatools
-from creds import APIKEY1,APIKEY2
+from utils.creds import APIKEY1,APIKEY2
 
 data_root = '/home/gabriel/guesser/data'
 raw_json_dirs='raw_jsons/us'

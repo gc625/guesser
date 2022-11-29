@@ -10,8 +10,6 @@ from pathlib import Path
 
 
 
-
-
 class CLSREG_loss(nn.Module):
     '''
     Custom loss function that combines a CE Loss and regression loss
@@ -34,7 +32,7 @@ class CLSREG_loss(nn.Module):
         predicted_abs_position = predicted_mean_size+predicted_offsets
         return predicted_abs_position
 
-    def output_decoder(self,output):
+    def output_decoder(self,output,return_class_pred=False):
         smax = nn.Softmax(dim=-1)
         cls_pred,reg_pred = output['cls_pred'],output['reg_pred']
         cls_probs = smax(cls_pred)
@@ -44,7 +42,11 @@ class CLSREG_loss(nn.Module):
         selected_offsets = reg_pred.reshape(B,C//2,2)[batch_idx,prediced_classes]
         predicted_abs_pos = self.get_abs_pos(prediced_classes,selected_offsets)
         
+        if return_class_pred:
+            return predicted_abs_pos,prediced_classes
+
         return predicted_abs_pos
+
 
     def forward(self,output,labels,writer,cur_iters):
         '''

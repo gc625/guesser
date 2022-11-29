@@ -5,7 +5,7 @@ from timm.models import create_model
 import ConvNeXt.models.convnext
 import ConvNeXt.models.convnext_isotropic
 from PIL import Image
-from convert_imagenet_label import IN22k_labels
+from utils.convert_imagenet_label import IN22k_labels
 from dataset import USLocations
 import torch.optim
 import torch.nn as nn
