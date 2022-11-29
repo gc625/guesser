@@ -22,11 +22,13 @@ create_data.py
 
 The model then can be trained by running `main.py` with your own args.
 
+# Model Checkpoints
+
+The weights to the two models can be found here: #uploading...
+
 
 # Current capabilities
 - currently *only* works for USA. I'm too poor to download enough training images for the entire world. Paypal me $20k and I'll do it
-- XX accuracy on USA 
-
 
 # TODO:
 
