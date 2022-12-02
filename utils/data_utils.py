@@ -424,6 +424,10 @@ class Datatools():
 
         split_folder = os.path.join(self.data_root,'images',split)
         temp_folder = os.path.join(self.data_root,'images','raw')
+
+        os.makedirs(split_folder,exist_ok=True)
+        os.makedirs(temp_folder,exist_ok=True)
+
         final_name = os.path.join(split_folder,stateidx+'.jpg')
     
         if P(final_name).exists():
