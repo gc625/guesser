@@ -14,7 +14,7 @@ from utils.model_utils import BinBasedConVNeXt, CLSREG_loss
 
 
 
-def setup_model(ckpt,with_bin,logger):
+def setup_model(ckpt,with_bin,pretrained_IM22k,logger):
 
     model = create_model(
     'convnext_base', 
@@ -39,6 +39,11 @@ def setup_model(ckpt,with_bin,logger):
         print(f'ckpt from {ckpt} loaded')
         ckpt = torch.load(ckpt)
         model.load_state_dict(ckpt)
+    else:
+        if logger is not None:
+            logger.info(f'no ckpt loaded')
+        print(f'no ckpt loaded')
+        
 
 
     return model
