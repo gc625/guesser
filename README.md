@@ -30,6 +30,31 @@ The weights to the two models can be found here: [drive link](https://drive.goog
 # Current capabilities
 - currently *only* works for USA. I'm too poor to download enough training images for the entire world. Paypal me $20k and I'll do it
 
+# Results
+
+## Histogram 
+Naive: just predict x,y
+
+Bin Based: predict state then residual 
+
+- No pretrain is the bin based model without pretraining on Imagenet22k
+
+random guess: guessing a random state 
+
+always center: always predicting the center of the USA \[39.50,-98.35\]
+
+![](graphs/zoomedin_dist.png)
+
+
+## Mean distance from true location
+![](graphs/Mean.png)
+
+## Median distance from true location
+![](graphs/Median.png)
+
+## standard deviation of difference 
+![](graphs/Standard Deviation.png.png)
+
 # TODO:
 
 Create browser extension to interface with game UI
