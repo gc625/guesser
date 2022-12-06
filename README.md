@@ -24,7 +24,7 @@ The model then can be trained by running `main.py` with your own args.
 
 # Model Checkpoints
 
-The weights to the two models can be found here: #uploading...
+The weights to the two models can be found here: [drive link](https://drive.google.com/drive/folders/1D2474a_rjvMkjYEUSQY1yzG4DbLVRFx9?usp=share_link)
 
 
 # Current capabilities
