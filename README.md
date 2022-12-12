@@ -53,7 +53,7 @@ always center: always predicting the center of the USA \[39.50,-98.35\]
 ![](graphs/Median.png)
 
 ## standard deviation of difference 
-![](graphs/Standard Deviation.png)
+![](graphs/Standard%20Deviation.png)
 
 # TODO:
 
