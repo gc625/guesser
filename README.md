@@ -1,4 +1,4 @@
-# guesser.ai
+# DeepGuessr
 
 
 An AI for the web based game geoguessr. The model uses a ConVneXt-B backbone pretrained on ImageNet22k, which was then finetuned on the dataset.
