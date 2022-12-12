@@ -1,7 +1,7 @@
 # DeepGuessr
 
 
-An AI for the web based game geoguessr. The model uses a ConVneXt-B backbone pretrained on ImageNet22k, which was then finetuned on the dataset.
+An AI for the web based game geoguessr. The model uses a ConVneXt-B backbone pretrained on ImageNet22k, which was then finetuned on a self collected dataset.
 
 
 The conda environment required to train the model yourself can be created with the following cmd:
@@ -9,7 +9,11 @@ The conda environment required to train the model yourself can be created with t
 conda create -n <environment-name> --file req.txt
 ```
 
-main thing is that its `pytorch 1.12.0` and python 3.8.15
+main thing is that it uses `pytorch 1.12.0` and `python 3.8.15`. Probably works with most environments, there isnt any special packages used.
+
+
+For inference, I think it should be able to run with ~1GB of RAM on CPU. I haven't done any performance benchmarks so feel free to try it out and let me know. Training was done on a RTX 3090 ~30 epochs, note that I was able to train with `batch_size=7` with `torch.amp` which shortened training time from 1.5hrs per epoch to 50 minutes. 
+
 
 
 # Downloading dataset
